@@ -281,9 +281,15 @@ class TemplateDB:
             return None
         tid = self.create(data)
         if data.get('requirements'):
-            req_lines = [l.strip().lstrip('- ').strip()
-                         for l in data['requirements'].split('\n') if l.strip() and not l.startswith('###')]
-            for i, req in enumerate(req_lines):
-                if req:
-                    self.add_requirement(tid, req, 'original')
+            cat_map = {'기존 요구사항': 'original', '추가 요구사항': 'added', '수정 요구사항': 'modified'}
+            current_cat = 'original'
+            for line in data['requirements'].split('\n'):
+                stripped = line.strip()
+                if stripped.startswith('### '):
+                    heading = stripped[4:].strip()
+                    current_cat = cat_map.get(heading, 'original')
+                    continue
+                content = stripped.lstrip('- ').strip()
+                if content:
+                    self.add_requirement(tid, content, current_cat)
         return tid
