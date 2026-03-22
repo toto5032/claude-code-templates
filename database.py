@@ -249,26 +249,41 @@ class TemplateDB:
             lines.append(f"## 참고패턴\n{t['ref_patterns']}\n")
         return '\n'.join(lines)
 
-    def import_from_excel(self, file_path):
-        import openpyxl
-        wb = openpyxl.load_workbook(file_path)
-        ws = wb.active
-        headers = [cell.value for cell in ws[1]]
-        col_map = {
-            '이름': 'name', '유형': 'type', '프로젝트명': 'project_name',
-            '기술스택': 'tech_stack', '작업파일': 'work_files',
-            '목표': 'goal', '배경': 'background', '요구사항': 'requirements',
-            '입력': 'input_desc', '산출물': 'output_desc',
-            '금지사항': 'restrictions', '참고패턴': 'ref_patterns'
+    def import_from_md(self, file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        section_map = {
+            '프로젝트명': 'project_name', '기술스택': 'tech_stack',
+            '작업파일': 'work_files', '목표': 'goal', '배경': 'background',
+            '요구사항': 'requirements', '입력': 'input_desc',
+            '산출물': 'output_desc', '금지사항': 'restrictions',
+            '참고패턴': 'ref_patterns'
         }
-        imported = 0
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            data = {}
-            for i, val in enumerate(row):
-                if i < len(headers) and headers[i] in col_map:
-                    data[col_map[headers[i]]] = val or ''
-            if data.get('name'):
-                self.create(data)
-                imported += 1
-        wb.close()
-        return imported
+        data = {}
+        current_key = None
+        lines_buf = []
+        for line in content.split('\n'):
+            if line.startswith('# ') and not line.startswith('## '):
+                data['name'] = line[2:].strip()
+                continue
+            if line.startswith('## '):
+                if current_key:
+                    data[current_key] = '\n'.join(lines_buf).strip()
+                heading = line[3:].strip()
+                current_key = section_map.get(heading)
+                lines_buf = []
+                continue
+            if current_key is not None:
+                lines_buf.append(line)
+        if current_key:
+            data[current_key] = '\n'.join(lines_buf).strip()
+        if not data.get('name'):
+            return None
+        tid = self.create(data)
+        if data.get('requirements'):
+            req_lines = [l.strip().lstrip('- ').strip()
+                         for l in data['requirements'].split('\n') if l.strip() and not l.startswith('###')]
+            for i, req in enumerate(req_lines):
+                if req:
+                    self.add_requirement(tid, req, 'original')
+        return tid

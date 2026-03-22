@@ -121,20 +121,24 @@ def api_claude_md(tid):
     return jsonify({'claude_md': text})
 
 
-@app.route('/api/import-excel', methods=['POST'])
-def api_import_excel():
+@app.route('/api/import-md', methods=['POST'])
+def api_import_md():
     if 'file' not in request.files:
         flash('파일을 선택해주세요.', 'error')
         return redirect(url_for('index'))
     f = request.files['file']
-    if not f.filename.endswith('.xlsx'):
-        flash('.xlsx 파일만 업로드할 수 있습니다.', 'error')
+    if not f.filename.endswith('.md'):
+        flash('.md 파일만 업로드할 수 있습니다.', 'error')
         return redirect(url_for('index'))
-    tmp_path = os.path.join(os.path.dirname(__file__), 'tmp_upload.xlsx')
+    tmp_path = os.path.join(os.path.dirname(__file__), 'tmp_upload.md')
     f.save(tmp_path)
     try:
-        count = db.import_from_excel(tmp_path)
-        flash(f'{count}개 템플릿을 가져왔습니다.', 'success')
+        tid = db.import_from_md(tmp_path)
+        if tid:
+            flash('템플릿을 가져왔습니다.', 'success')
+            return redirect(url_for('template_detail', tid=tid))
+        else:
+            flash('MD 파일에서 템플릿 이름(# 제목)을 찾을 수 없습니다.', 'error')
     except Exception as e:
         flash(f'가져오기 실패: {str(e)}', 'error')
     finally:

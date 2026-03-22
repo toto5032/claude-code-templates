@@ -4,10 +4,10 @@
 <div class="page-header">
     <h1>프로젝트 템플릿</h1>
     <div class="header-actions">
-        <form action="{{ url_for('api_import_excel') }}" method="post" enctype="multipart/form-data" class="import-form">
+        <form action="{{ url_for('api_import_md') }}" method="post" enctype="multipart/form-data" class="import-form">
             <label class="btn btn-outline btn-sm">
-                엑셀 가져오기
-                <input type="file" name="file" accept=".xlsx" onchange="this.form.submit()" hidden>
+                MD 가져오기
+                <input type="file" name="file" accept=".md" onchange="this.form.submit()" hidden>
             </label>
         </form>
     </div>
