@@ -23,7 +23,7 @@ def index():
 
 @app.route('/template/new')
 def template_new():
-    return render_template('form.html', template=None)
+    return render_template('form.html', template=None, requirements=[])
 
 
 @app.route('/template/<int:tid>')
@@ -32,9 +32,12 @@ def template_detail(tid):
     if not t:
         flash('템플릿을 찾을 수 없습니다.', 'error')
         return redirect(url_for('index'))
+    db.sync_requirements_from_text(tid)
+    requirements = db.get_requirements(tid)
     prompt_text = db.to_prompt(tid)
     claude_md = db.to_claude_md(tid)
-    return render_template('detail.html', template=t, prompt_text=prompt_text, claude_md=claude_md)
+    return render_template('detail.html', template=t, requirements=requirements,
+                           prompt_text=prompt_text, claude_md=claude_md)
 
 
 @app.route('/template/<int:tid>/edit')
@@ -43,13 +46,21 @@ def template_edit(tid):
     if not t:
         flash('템플릿을 찾을 수 없습니다.', 'error')
         return redirect(url_for('index'))
-    return render_template('form.html', template=t)
+    db.sync_requirements_from_text(tid)
+    requirements = db.get_requirements(tid)
+    return render_template('form.html', template=t, requirements=requirements)
 
 
 @app.route('/api/template', methods=['POST'])
 def api_create():
-    data = request.json or request.form.to_dict()
+    data = request.get_json(silent=True) or request.form.to_dict()
+    req_items = request.form.getlist('req_content[]')
+    req_categories = request.form.getlist('req_category[]')
     tid = db.create(data)
+    for i, content in enumerate(req_items):
+        if content.strip():
+            cat = req_categories[i] if i < len(req_categories) else 'original'
+            db.add_requirement(tid, content.strip(), cat)
     if request.is_json:
         return jsonify({'id': tid, 'message': '템플릿이 생성되었습니다.'})
     flash('템플릿이 생성되었습니다.', 'success')
@@ -58,8 +69,27 @@ def api_create():
 
 @app.route('/api/template/<int:tid>', methods=['PUT', 'POST'])
 def api_update(tid):
-    data = request.json or request.form.to_dict()
+    data = request.get_json(silent=True) or request.form.to_dict()
     db.update(tid, data)
+    if not request.is_json:
+        req_ids = request.form.getlist('req_id[]')
+        req_contents = request.form.getlist('req_content[]')
+        req_categories = request.form.getlist('req_category[]')
+        existing = {str(r['id']) for r in db.get_requirements(tid)}
+        submitted_ids = set()
+        for i, content in enumerate(req_contents):
+            rid = req_ids[i] if i < len(req_ids) else ''
+            cat = req_categories[i] if i < len(req_categories) else 'original'
+            if rid and rid in existing:
+                submitted_ids.add(rid)
+                if content.strip():
+                    db.update_requirement(int(rid), content.strip(), cat)
+                else:
+                    db.delete_requirement(int(rid))
+            elif content.strip():
+                db.add_requirement(tid, content.strip(), cat)
+        for old_id in existing - submitted_ids:
+            db.delete_requirement(int(old_id))
     if request.is_json:
         return jsonify({'message': '템플릿이 수정되었습니다.'})
     flash('템플릿이 수정되었습니다.', 'success')

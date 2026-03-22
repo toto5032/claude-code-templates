@@ -40,7 +40,26 @@
     </div>
     {% endif %}
 
-    {% if template.requirements %}
+    {% if requirements %}
+    <div class="detail-section">
+        <h3>요구사항</h3>
+        {% set cats = {'original': '기존', 'added': '추가', 'modified': '수정'} %}
+        {% set ns = namespace(current_cat='') %}
+        <ul class="req-list-view">
+        {% for req in requirements %}
+            {% if req.category != ns.current_cat %}
+                {% if ns.current_cat %}
+                </ul>
+                {% endif %}
+                {% set ns.current_cat = req.category %}
+                <div class="req-cat-label cat-{{ req.category }}">{{ cats.get(req.category, req.category) }}</div>
+                <ul class="req-list-view">
+            {% endif %}
+            <li>{{ req.content }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% elif template.requirements %}
     <div class="detail-section">
         <h3>요구사항</h3>
         <pre class="pre-wrap">{{ template.requirements }}</pre>

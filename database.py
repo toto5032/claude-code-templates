@@ -36,6 +36,16 @@ class TemplateDB:
                 restrictions TEXT,
                 ref_patterns TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS requirement_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                template_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                category TEXT DEFAULT 'original',
+                sort_order INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE
+            );
         ''')
         conn.commit()
         conn.close()
@@ -87,9 +97,76 @@ class TemplateDB:
 
     def delete(self, template_id):
         conn = self._get_conn()
+        conn.execute('DELETE FROM requirement_items WHERE template_id = ?', (template_id,))
         conn.execute('DELETE FROM templates WHERE id = ?', (template_id,))
         conn.commit()
         conn.close()
+
+    # --- requirement_items CRUD ---
+
+    def get_requirements(self, template_id):
+        conn = self._get_conn()
+        rows = conn.execute(
+            'SELECT * FROM requirement_items WHERE template_id = ? ORDER BY category, sort_order',
+            (template_id,)
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def add_requirement(self, template_id, content, category='original'):
+        conn = self._get_conn()
+        max_order = conn.execute(
+            'SELECT COALESCE(MAX(sort_order), -1) FROM requirement_items WHERE template_id = ?',
+            (template_id,)
+        ).fetchone()[0]
+        conn.execute(
+            'INSERT INTO requirement_items (template_id, content, category, sort_order) VALUES (?, ?, ?, ?)',
+            (template_id, content, category, max_order + 1)
+        )
+        conn.execute(
+            "UPDATE templates SET updated_at=datetime('now','localtime') WHERE id=?",
+            (template_id,)
+        )
+        conn.commit()
+        conn.close()
+
+    def update_requirement(self, req_id, content, category=None):
+        conn = self._get_conn()
+        if category:
+            conn.execute(
+                'UPDATE requirement_items SET content=?, category=? WHERE id=?',
+                (content, category, req_id)
+            )
+        else:
+            conn.execute('UPDATE requirement_items SET content=? WHERE id=?', (content, req_id))
+        conn.commit()
+        conn.close()
+
+    def delete_requirement(self, req_id):
+        conn = self._get_conn()
+        conn.execute('DELETE FROM requirement_items WHERE id=?', (req_id,))
+        conn.commit()
+        conn.close()
+
+    def sync_requirements_from_text(self, template_id):
+        """기존 requirements 텍스트 필드를 항목별로 마이그레이션"""
+        t = self.get(template_id)
+        if not t or not t.get('requirements'):
+            return 0
+        existing = self.get_requirements(template_id)
+        if existing:
+            return 0
+        lines = [l.strip().lstrip('- ').strip() for l in t['requirements'].split('\n') if l.strip()]
+        for i, line in enumerate(lines):
+            if line:
+                conn = self._get_conn()
+                conn.execute(
+                    'INSERT INTO requirement_items (template_id, content, category, sort_order) VALUES (?, ?, ?, ?)',
+                    (template_id, line, 'original', i)
+                )
+                conn.commit()
+                conn.close()
+        return len(lines)
 
     def search(self, keyword):
         conn = self._get_conn()
@@ -102,6 +179,27 @@ class TemplateDB:
         ).fetchall()
         conn.close()
         return [dict(r) for r in rows]
+
+    def _build_requirements_text(self, template_id):
+        items = self.get_requirements(template_id)
+        if not items:
+            t = self.get(template_id)
+            return t.get('requirements', '') if t else ''
+        categories = {}
+        for item in items:
+            cat = item['category']
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(item['content'])
+        parts = []
+        cat_labels = {'original': '기존 요구사항', 'added': '추가 요구사항', 'modified': '수정 요구사항'}
+        for cat in ['original', 'added', 'modified']:
+            if cat in categories:
+                if len(categories) > 1:
+                    parts.append(f"### {cat_labels.get(cat, cat)}")
+                for content in categories[cat]:
+                    parts.append(f"- {content}")
+        return '\n'.join(parts)
 
     def to_prompt(self, template_id):
         t = self.get(template_id)
@@ -116,8 +214,9 @@ class TemplateDB:
             lines.append(f"\n## 목표\n{t['goal']}")
         if t['background']:
             lines.append(f"\n## 배경\n{t['background']}")
-        if t['requirements']:
-            lines.append(f"\n## 요구사항\n{t['requirements']}")
+        req_text = self._build_requirements_text(template_id)
+        if req_text:
+            lines.append(f"\n## 요구사항\n{req_text}")
         if t['input_desc']:
             lines.append(f"\n## 입력\n{t['input_desc']}")
         if t['output_desc']:
@@ -140,8 +239,9 @@ class TemplateDB:
             lines.append("")
         if t['tech_stack']:
             lines.append(f"## 기술스택\n{t['tech_stack']}\n")
-        if t['requirements']:
-            lines.append(f"## 요구사항\n{t['requirements']}\n")
+        req_text = self._build_requirements_text(template_id)
+        if req_text:
+            lines.append(f"## 요구사항\n{req_text}\n")
         if t['restrictions']:
             lines.append(f"## 금지사항\n{t['restrictions']}\n")
         if t['ref_patterns']:

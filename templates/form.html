@@ -51,10 +51,29 @@
         <textarea name="background" rows="2" placeholder="프로젝트 배경 설명">{{ template.background if template else '' }}</textarea>
     </div>
 
+    <!-- 요구사항 항목별 관리 -->
     <div class="form-group">
         <label>요구사항</label>
-        <textarea name="requirements" rows="6" placeholder="- 기능 요구사항 1&#10;- 기능 요구사항 2&#10;- 기능 요구사항 3">{{ template.requirements if template else '' }}</textarea>
+        <div id="req-list">
+            {% for req in requirements %}
+            <div class="req-item">
+                <input type="hidden" name="req_id[]" value="{{ req.id }}">
+                <select name="req_category[]" class="req-category">
+                    <option value="original" {{ 'selected' if req.category == 'original' }}>기존</option>
+                    <option value="added" {{ 'selected' if req.category == 'added' }}>추가</option>
+                    <option value="modified" {{ 'selected' if req.category == 'modified' }}>수정</option>
+                </select>
+                <input type="text" name="req_content[]" value="{{ req.content }}" class="req-input" placeholder="요구사항 입력">
+                <button type="button" class="btn btn-danger btn-sm req-remove" onclick="removeReq(this)">X</button>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="addReq('original')">+ 기존 요구사항</button>
+        <button type="button" class="btn btn-outline btn-sm btn-add-new" onclick="addReq('added')">+ 추가 요구사항</button>
     </div>
+
+    <!-- 기존 requirements 텍스트 (숨김, 호환용) -->
+    <input type="hidden" name="requirements" value="{{ template.requirements if template else '' }}">
 
     <div class="form-row">
         <div class="form-group flex-1">
@@ -82,4 +101,30 @@
         <a href="{{ url_for('template_detail', tid=template.id) if template else url_for('index') }}" class="btn btn-outline">취소</a>
     </div>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addReq(category) {
+    const list = document.getElementById('req-list');
+    const div = document.createElement('div');
+    div.className = 'req-item';
+    div.innerHTML = `
+        <input type="hidden" name="req_id[]" value="">
+        <select name="req_category[]" class="req-category">
+            <option value="original" ${category === 'original' ? 'selected' : ''}>기존</option>
+            <option value="added" ${category === 'added' ? 'selected' : ''}>추가</option>
+            <option value="modified" ${category === 'modified' ? 'selected' : ''}>수정</option>
+        </select>
+        <input type="text" name="req_content[]" class="req-input" placeholder="요구사항 입력" autofocus>
+        <button type="button" class="btn btn-danger btn-sm req-remove" onclick="removeReq(this)">X</button>
+    `;
+    list.appendChild(div);
+    div.querySelector('.req-input').focus();
+}
+
+function removeReq(btn) {
+    btn.closest('.req-item').remove();
+}
+</script>
 {% endblock %}
