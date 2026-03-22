@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ '수정' if template else '새 템플릿' }} - Claude Code 템플릿 관리{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ '템플릿 수정' if template else '새 템플릿 등록' }}</h1>
+</div>
+
+<form method="post"
+      action="{{ url_for('api_update', tid=template.id) if template else url_for('api_create') }}"
+      class="template-form">
+
+    <div class="form-row">
+        <div class="form-group flex-2">
+            <label>이름 <span class="required">*</span></label>
+            <input type="text" name="name" value="{{ template.name if template else '' }}" required placeholder="예: 토토's Daily 영어 학습">
+        </div>
+        <div class="form-group flex-1">
+            <label>유형</label>
+            <select name="type">
+                <option value="new" {{ 'selected' if not template or template.type == 'new' }}>new</option>
+                <option value="update" {{ 'selected' if template and template.type == 'update' }}>update</option>
+                <option value="refactor" {{ 'selected' if template and template.type == 'refactor' }}>refactor</option>
+                <option value="bugfix" {{ 'selected' if template and template.type == 'bugfix' }}>bugfix</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group flex-1">
+            <label>프로젝트명</label>
+            <input type="text" name="project_name" value="{{ template.project_name if template else '' }}" placeholder="예: 영어 학습 사이트">
+        </div>
+        <div class="form-group flex-1">
+            <label>기술스택</label>
+            <input type="text" name="tech_stack" value="{{ template.tech_stack if template else '' }}" placeholder="예: Flask, Python, SQLite">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>작업파일</label>
+        <input type="text" name="work_files" value="{{ template.work_files if template else '' }}" placeholder="예: app.py, database.py">
+    </div>
+
+    <div class="form-group">
+        <label>목표</label>
+        <textarea name="goal" rows="2" placeholder="이 프로젝트가 달성해야 할 목표">{{ template.goal if template else '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label>배경</label>
+        <textarea name="background" rows="2" placeholder="프로젝트 배경 설명">{{ template.background if template else '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label>요구사항</label>
+        <textarea name="requirements" rows="6" placeholder="- 기능 요구사항 1&#10;- 기능 요구사항 2&#10;- 기능 요구사항 3">{{ template.requirements if template else '' }}</textarea>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group flex-1">
+            <label>입력</label>
+            <textarea name="input_desc" rows="2" placeholder="입력 데이터 설명">{{ template.input_desc if template else '' }}</textarea>
+        </div>
+        <div class="form-group flex-1">
+            <label>산출물</label>
+            <textarea name="output_desc" rows="2" placeholder="기대 산출물">{{ template.output_desc if template else '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>금지사항</label>
+        <textarea name="restrictions" rows="3" placeholder="- 금지할 내용 1&#10;- 금지할 내용 2">{{ template.restrictions if template else '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label>참고패턴</label>
+        <textarea name="ref_patterns" rows="3" placeholder="참고할 패턴이나 기존 코드">{{ template.ref_patterns if template else '' }}</textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">{{ '수정' if template else '등록' }}</button>
+        <a href="{{ url_for('template_detail', tid=template.id) if template else url_for('index') }}" class="btn btn-outline">취소</a>
+    </div>
+</form>
+{% endblock %}

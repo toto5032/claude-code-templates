@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}템플릿 목록 - Claude Code 템플릿 관리{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>프로젝트 템플릿</h1>
+    <div class="header-actions">
+        <form action="{{ url_for('api_import_excel') }}" method="post" enctype="multipart/form-data" class="import-form">
+            <label class="btn btn-outline btn-sm">
+                엑셀 가져오기
+                <input type="file" name="file" accept=".xlsx" onchange="this.form.submit()" hidden>
+            </label>
+        </form>
+    </div>
+</div>
+
+<div class="stats-bar">
+    <span class="stat">전체 <strong>{{ stats.total }}</strong></span>
+    <span class="stat">신규 <strong>{{ stats.new }}</strong></span>
+</div>
+
+<form class="search-bar" method="get" action="{{ url_for('index') }}">
+    <input type="text" name="q" placeholder="템플릿 검색..." value="{{ keyword }}" class="search-input">
+    <button type="submit" class="btn btn-primary btn-sm">검색</button>
+    {% if keyword %}
+    <a href="{{ url_for('index') }}" class="btn btn-outline btn-sm">초기화</a>
+    {% endif %}
+</form>
+
+{% if templates %}
+<div class="template-grid">
+    {% for t in templates %}
+    <a href="{{ url_for('template_detail', tid=t.id) }}" class="template-card">
+        <div class="card-header">
+            <span class="card-type type-{{ t.type }}">{{ t.type }}</span>
+            <span class="card-date">{{ t.updated_at[:10] }}</span>
+        </div>
+        <h3 class="card-title">{{ t.name }}</h3>
+        {% if t.project_name %}
+        <p class="card-project">{{ t.project_name }}</p>
+        {% endif %}
+        {% if t.tech_stack %}
+        <div class="card-tags">
+            {% for tag in t.tech_stack.split(',') %}
+            <span class="tag">{{ tag.strip() }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if t.goal %}
+        <p class="card-goal">{{ t.goal[:80] }}{% if t.goal|length > 80 %}...{% endif %}</p>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>등록된 템플릿이 없습니다.</p>
+    <a href="{{ url_for('template_new') }}" class="btn btn-primary">첫 번째 템플릿 만들기</a>
+</div>
+{% endif %}
+{% endblock %}

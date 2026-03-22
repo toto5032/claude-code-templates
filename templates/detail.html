@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ template.name }} - Claude Code 템플릿 관리{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ template.name }}</h1>
+        <div class="detail-meta">
+            <span class="card-type type-{{ template.type }}">{{ template.type }}</span>
+            {% if template.project_name %}<span class="meta-item">{{ template.project_name }}</span>{% endif %}
+            <span class="meta-item">생성: {{ template.created_at[:10] }}</span>
+            <span class="meta-item">수정: {{ template.updated_at[:10] }}</span>
+        </div>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('template_edit', tid=template.id) }}" class="btn btn-outline btn-sm">수정</a>
+        <button onclick="deleteTemplate({{ template.id }})" class="btn btn-danger btn-sm">삭제</button>
+    </div>
+</div>
+
+{% if template.tech_stack %}
+<div class="card-tags" style="margin-bottom:1rem">
+    {% for tag in template.tech_stack.split(',') %}
+    <span class="tag">{{ tag.strip() }}</span>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="detail-sections">
+    {% if template.goal %}
+    <div class="detail-section">
+        <h3>목표</h3>
+        <p>{{ template.goal }}</p>
+    </div>
+    {% endif %}
+
+    {% if template.background %}
+    <div class="detail-section">
+        <h3>배경</h3>
+        <p>{{ template.background }}</p>
+    </div>
+    {% endif %}
+
+    {% if template.requirements %}
+    <div class="detail-section">
+        <h3>요구사항</h3>
+        <pre class="pre-wrap">{{ template.requirements }}</pre>
+    </div>
+    {% endif %}
+
+    {% if template.input_desc or template.output_desc %}
+    <div class="detail-row">
+        {% if template.input_desc %}
+        <div class="detail-section flex-1">
+            <h3>입력</h3>
+            <p>{{ template.input_desc }}</p>
+        </div>
+        {% endif %}
+        {% if template.output_desc %}
+        <div class="detail-section flex-1">
+            <h3>산출물</h3>
+            <p>{{ template.output_desc }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if template.restrictions %}
+    <div class="detail-section">
+        <h3>금지사항</h3>
+        <pre class="pre-wrap">{{ template.restrictions }}</pre>
+    </div>
+    {% endif %}
+
+    {% if template.work_files %}
+    <div class="detail-section">
+        <h3>작업파일</h3>
+        <p>{{ template.work_files }}</p>
+    </div>
+    {% endif %}
+
+    {% if template.ref_patterns %}
+    <div class="detail-section">
+        <h3>참고패턴</h3>
+        <pre class="pre-wrap">{{ template.ref_patterns }}</pre>
+    </div>
+    {% endif %}
+</div>
+
+<div class="export-section">
+    <h2>Claude Code로 내보내기</h2>
+    <div class="export-tabs">
+        <button class="tab-btn active" onclick="switchTab('prompt')">프롬프트 복사</button>
+        <button class="tab-btn" onclick="switchTab('claudemd')">CLAUDE.md 생성</button>
+    </div>
+
+    <div id="tab-prompt" class="tab-content active">
+        <p class="tab-desc">아래 내용을 복사하여 Claude Code에 붙여넣으세요.</p>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyToClipboard('prompt-text')">복사</button>
+            <pre id="prompt-text">{{ prompt_text }}</pre>
+        </div>
+    </div>
+
+    <div id="tab-claudemd" class="tab-content">
+        <p class="tab-desc">프로젝트 루트에 CLAUDE.md 파일로 저장됩니다.</p>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyToClipboard('claudemd-text')">복사</button>
+            <pre id="claudemd-text">{{ claude_md }}</pre>
+        </div>
+        <button class="btn btn-primary" onclick="downloadClaudeMd()">CLAUDE.md 다운로드</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const templateId = {{ template.id }};
+</script>
+{% endblock %}

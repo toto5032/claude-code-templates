@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.db
+.env
+tmp_upload.xlsx
+venv/
