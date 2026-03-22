@@ -6,7 +6,8 @@ from datetime import datetime
 class TemplateDB:
     def __init__(self, db_path=None):
         if db_path is None:
-            db_path = os.path.join(os.path.dirname(__file__), 'templates.db')
+            db_dir = os.environ.get('DB_DIR', os.path.dirname(__file__))
+            db_path = os.path.join(db_dir, 'templates.db')
         self.db_path = db_path
         self._init_db()
 
